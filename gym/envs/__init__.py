@@ -207,3 +207,13 @@ register(
         'board_size': 19,
     },
 )
+
+# Cannonjs
+# ---------------------------------------
+
+register(
+    id='CannonCartPole-v0',
+    entry_point='gym.envs.cannonjs:CannonCartPoleEnv',
+    timestep_limit=200,
+    reward_threshold=195
+)
