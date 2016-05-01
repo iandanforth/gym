@@ -18,7 +18,7 @@ from selenium.common.exceptions import WebDriverException
 
 class CannonEnvRequestHandler(SimpleHTTPRequestHandler):
     """
-    SimpleHTTPRequestHandler modified so that it serves files from assets 
+    SimpleHTTPRequestHandler modified so that it serves files from assets
     subdirectory rather than os.cwd()
     """
 
@@ -77,7 +77,7 @@ class CannonJSEnv(gym.Env):
         jsStepFunction = self.jsStepFunctionTemplate.format(action=str(action))
         stepJSON = self.driver.execute_script(jsStepFunction)
         stepValue = json.loads(stepJSON)
-        print stepValue
+        # print stepValue
         return stepValue, "foo", "bar", "baz"
 
     def serverShutdown(self):
@@ -119,7 +119,7 @@ class CannonJSEnv(gym.Env):
         if close:
             self.serverShutdown()
             self.driver.quit()
-        
+
         if not self.driver:
             # Register signal handler
             signal.signal(signal.SIGINT, self._signalHandler)
