@@ -19,11 +19,34 @@
 
 
         <script>
-            var world, mass, body, shape, timeStep=1/60,
-                camera, scene, renderer, geometry, material, mesh;
+            var world;
+            var mass;
+            var body;
+            var shape;
+            var timeStep = 1 / 60;
+            var camera;
+            var scene;
+            var renderer;
+            var geometry;
+            var material;
+            var meshes = [];
+            var bodies = [];
+            var iter = 0;
+            var direction = 1;
             var queue = new Queue;
+            // Cart Dimensions
+            var cartX = 2;
+            var cartY = 1;
+            var cartZ = 1;
+
+            // Pendulum Dimensions
+            var pendX = 0.5;
+            var pendY = 4;
+            var pendZ = 0.5;
+
             initThree();
             initCannon();
+
 
             function initThree() {
                 // Scene
@@ -36,16 +59,29 @@
                     1,
                     100
                 );
-                camera.position.z = 5;
+                camera.position.z = 10;
+                // camera.position.x = 5;
+                // camera.position.y = 5;
+                // camera.lookAt(new CANNON.Vec3(0,0,0));
                 scene.add(camera);
 
+                ////////////
                 // Geometry
-                geometry = new THREE.BoxBufferGeometry(2, 2, 2);
+
+                // Cart
+                geometry = new THREE.BoxBufferGeometry(cartX, cartY, cartZ);
                 var texture = new THREE.TextureLoader()
                     .load('textures/crate.gif');
                 material = new THREE.MeshBasicMaterial( { map: texture } );
-                mesh = new THREE.Mesh( geometry, material );
-                scene.add(mesh);
+                cartMesh = new THREE.Mesh( geometry, material );
+                scene.add(cartMesh);
+                meshes.push(cartMesh);
+
+                // Pendulum
+                pendulumGeometry = new THREE.BoxBufferGeometry(pendX, pendY, pendZ);
+                pendulumMesh = new THREE.Mesh( pendulumGeometry, material );
+                scene.add(pendulumMesh);
+                meshes.push(pendulumMesh);
 
                 // Leave alone
                 renderer = new THREE.WebGLRenderer();
@@ -60,14 +96,61 @@
                 world.gravity.set(0, -1, 0);
                 world.broadphase = new CANNON.NaiveBroadphase();
                 world.solver.iterations = 10;
-                shape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
-                mass = 1;
-                body = new CANNON.Body({
+
+                /////////
+                // Bodys
+
+                // Cart
+                shape = new CANNON.Box(
+                    new CANNON.Vec3(cartX / 2, cartY / 2, cartZ / 2)
+                );
+                cartBody = new CANNON.Body({
                     mass: 1,
-                    linearFactor: new CANNON.Vec3(1, 0, 0)
+                    linearFactor: new CANNON.Vec3(1, 0, 0),
+                    angularFactor: new CANNON.Vec3(0, 0, 0)
                 });
-                body.addShape(shape);
-                world.addBody(body);
+                cartBody.addShape(shape);
+                world.addBody(cartBody);
+                bodies.push(cartBody);
+
+                // Pendulum
+                pendulumShape = new CANNON.Box(
+                    new CANNON.Vec3(pendX / 2, pendY / 2, pendZ / 2)
+                );
+                pendulumBody = new CANNON.Body({
+                    mass: 1,
+                    angularFactor: new CANNON.Vec3(0, 0, 1)
+                });
+                pendulumBody.addShape(pendulumShape);
+                pendulumBody.position.set(
+                    0,
+                    pendY / 2 ,
+                    (cartZ / 2) + (pendZ / 2)
+                );
+                world.addBody(pendulumBody);
+                bodies.push(pendulumBody);
+
+
+                ///////////////
+                // Constraints
+
+                var axis = new CANNON.Vec3(0, 0, 1);
+                var p2p = new CANNON.PointToPointConstraint(
+                    cartBody,
+                    new CANNON.Vec3(0, 0, (cartZ / 2) + (pendZ / 2)),
+                    pendulumBody,
+                    new CANNON.Vec3(0, -(pendY / 2) + 0.1, -(pendZ / 2))
+                );
+
+                var hinge = new CANNON.HingeConstraint(
+                    cartBody,
+                    pendulumBody,
+                    {
+                        pivotA: new CANNON.Vec3(0, 0, 1.5), axisA: axis,
+                        pivotB: new CANNON.Vec3(0, -1.4, -0.2), axisB: axis
+                    }
+                );
+                world.addConstraint(p2p);
             }
 
             function onWindowResize() {
@@ -81,8 +164,12 @@
                 // Step the physics world
                 world.step(timeStep);
                 // Copy coordinates from Cannon.js to Three.js
-                mesh.position.copy(body.position);
-                mesh.quaternion.copy(body.quaternion);
+                for (var i = 0; i < meshes.length; i++) {
+                    var mesh = meshes[i];
+                    var body = bodies[i];
+                    mesh.position.copy(body.position);
+                    mesh.quaternion.copy(body.quaternion);
+                }
             }
 
             function step(action) {
@@ -93,16 +180,19 @@
 
             function runOneStep(action) {
 
+                iter++;
+
                 // Apply force to center
-                if (false) {
-                    var worldPoint = new CANNON.Vec3(0, 0, 0);
-                    var force = new CANNON.Vec3(100, 0, 0);
-                    body.applyForce(force, worldPoint);
-                }
+                // if (iter === 300) {
+                //     var worldPoint = new CANNON.Vec3(0, 0, 0);
+                //     var newtons = 100 * direction;
+                //     direction *= -1;
+                //     var force = new CANNON.Vec3(newtons, 0, 0);
+                //     bodies[0].applyForce(force, worldPoint);
+                // }
 
                 var output = {
-                    x: mesh.rotation.x,
-                    y: mesh.rotation.y
+                    x: meshes[0].position.x
                 };
 
                 queue.enqueue(output);

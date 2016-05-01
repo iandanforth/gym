@@ -77,7 +77,7 @@ class CannonJSEnv(gym.Env):
         jsStepFunction = self.jsStepFunctionTemplate.format(action=str(action))
         stepJSON = self.driver.execute_script(jsStepFunction)
         stepValue = json.loads(stepJSON)
-        # print stepValue
+        print stepValue
         return stepValue, "foo", "bar", "baz"
 
     def serverShutdown(self):
