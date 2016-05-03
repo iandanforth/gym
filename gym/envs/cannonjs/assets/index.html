@@ -7,7 +7,7 @@
         <style>
             body {
                 margin: 0px;
-                background-color: #000000;
+                background-color: #ffffff;
                 overflow: hidden;
             }
         </style>
@@ -51,6 +51,7 @@
                 renderer = new THREE.WebGLRenderer();
                 renderer.setPixelRatio( window.devicePixelRatio );
                 renderer.setSize( window.innerWidth, window.innerHeight );
+                renderer.setClearColor(0xffffff);
                 document.body.appendChild(renderer.domElement);
                 window.addEventListener('resize', onWindowResize, false);
             }
@@ -93,6 +94,9 @@
 
             function runOneStep(action) {
 
+                updatePhysics();
+                renderer.render( scene, camera );
+
                 // Apply force to center
                 if (false) {
                     var worldPoint = new CANNON.Vec3(0, 0, 0);
@@ -100,15 +104,25 @@
                     body.applyForce(force, worldPoint);
                 }
 
+                var canvas = document.querySelector('canvas');
+                if (canvas) {
+                    var ctx = canvas.getContext("webgl");
+                    console.log(ctx);
+                    console.log(canvas.width, canvas.height);
+                    var frame = new Uint8Array(canvas.width * canvas.height * 3);
+                    ctx.readPixels(0, 0, canvas.width-1, canvas.height-1, ctx.RGB, ctx.UNSIGNED_BYTE, frame);
+                    console.log(frame);
+                }
+
                 var output = {
                     x: mesh.rotation.x,
-                    y: mesh.rotation.y
+                    y: mesh.rotation.y,
+                    // frame: frame
                 };
 
                 queue.enqueue(output);
 
-                updatePhysics();
-                renderer.render( scene, camera );
+
             }
 
         </script>
