@@ -46,9 +46,13 @@ class CannonEnvRequestHandler(SimpleHTTPRequestHandler):
 
 
 def serversafe(func):
+    """
+    Decorator to properly shut down the webserver thread
+    in case of exceptions
+    """
     def _serversafe(self, *args, **kwargs):
         try:
-            func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         except Exception:
             self.serverShutdown()
             raise
@@ -63,9 +67,11 @@ class CannonJSEnv(gym.Env):
         'render.modes': ['human']
     }
 
-    def __init__(self):
-        self.port = 8181
+    def __init__(self, envName, port=8181):
+        self.port = str(port)
         self.path = os.path.dirname(os.path.abspath(__file__))
+        self.htmlFilename = envName + ".html"
+        self.envUrl = 'http://127.0.0.1:' + self.port + '/' + self.htmlFilename
 
         # Render properties
         self.server = None
@@ -73,12 +79,8 @@ class CannonJSEnv(gym.Env):
         self.indexPath = None
         self.jsStepFunctionTemplate = None
 
-    def _jsStep(self, action):
-        jsStepFunction = self.jsStepFunctionTemplate.format(action=str(action))
-        stepJSON = self.driver.execute_script(jsStepFunction)
-        stepValue = json.loads(stepJSON)
-        print stepValue
-        return stepValue, "foo", "bar", "baz"
+        # Launch browser and establish comms
+        self.render()
 
     def serverShutdown(self):
         if self.driver:
@@ -98,27 +100,20 @@ class CannonJSEnv(gym.Env):
 
     @serversafe
     def step(self, action):
-        super(CannonJSEnv, self).step(action)
+        return super(CannonJSEnv, self).step(action)
 
     @serversafe
     def reset(self):
-        super(CannonJSEnv, self).reset()
+        return super(CannonJSEnv, self).reset()
 
     @serversafe
     def render(self, *args, **kwargs):
-        super(CannonJSEnv, self).render(*args, **kwargs)
-
-    def _step(self, action):
-        return self._jsStep(action)
-
-    def _reset(self):
-        return []
+        return super(CannonJSEnv, self).render(*args, **kwargs)
 
     def _render(self, mode='human', close=False):
 
         if close:
             self.serverShutdown()
-            self.driver.quit()
 
         if not self.driver:
             # Register signal handler
@@ -136,13 +131,13 @@ class CannonJSEnv(gym.Env):
                 self.jsStepFunctionTemplate = fh.read()
 
             # Launch a browser
-            self.indexPath = os.path.join(self.path, 'assets', 'index.html')
             try:
                 self.driver = webdriver.Chrome()
-                # self.driver = webdriver.Firefox()
+                #self.driver = webdriver.Firefox()
+                self.driver.set_window_size(640, 480)
             except WebDriverException:
                 # Requires installing ChromeDriver
                 # http://chromedriver.storage.googleapis.com/index.html
                 self.driver = webdriver.Chrome()
 
-            self.driver.get('http://127.0.0.1:8181')
+            self.driver.get(self.envUrl)
